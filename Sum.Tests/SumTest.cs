@@ -83,5 +83,67 @@ namespace Sum.Tests
 
             Assert.True(sum > 0);
         }
+
+        /// <summary>
+        /// Для сравнения
+        /// </summary>
+        /// <param name="countOfElements"></param>
+        [Theory]
+        [InlineData(100_000)]
+        [InlineData(1_000_000)]
+        [InlineData(10_000_000)]
+        public void Common(int countOfElements)
+        {
+            var stopwatch = new Stopwatch();
+            const int countOfThreads = 10;
+            var list = GenerateList(countOfElements).ToList();
+
+            Debug.WriteLine($"Процесс SimpleSum для {countOfElements} запущен");
+            stopwatch.Start();
+            var sum = list.Sum(x => x);
+            stopwatch.Stop();
+
+            var elapsedTime = stopwatch.Elapsed.TotalMilliseconds;
+            Debug.WriteLine($"Процесс SimpleSum для {countOfElements} элементов завершен за {elapsedTime} ms, сумма = {sum}");
+
+            stopwatch.Reset();
+
+            sum = 0;
+            Debug.WriteLine($"Процесс TPLSum для {countOfElements} запущен");
+            stopwatch.Start();
+            Parallel.For(0, countOfElements, new ParallelOptions()
+            {
+                MaxDegreeOfParallelism = countOfThreads
+            }, (index) =>
+            {
+                Interlocked.Add(ref sum, list[index]);
+            });
+
+            stopwatch.Stop();
+
+            elapsedTime = stopwatch.Elapsed.TotalMilliseconds;
+            Debug.WriteLine($"Процесс TPLSum для {countOfElements} элементов завершен за {elapsedTime} ms, сумма = {sum}");
+            
+            stopwatch.Reset();
+
+
+            sum = 0;
+            Debug.WriteLine($"Процесс LinqSum для {countOfElements} запущен");
+            stopwatch.Start();
+            sum = list
+                .AsParallel()
+                .WithDegreeOfParallelism(countOfThreads)
+                .WithExecutionMode(ParallelExecutionMode.ForceParallelism)
+                .Sum();
+
+            stopwatch.Stop();
+
+            elapsedTime = stopwatch.Elapsed.TotalMilliseconds;
+            Debug.WriteLine($"Процесс LinqSum для {countOfElements} элементов завершен за {elapsedTime} ms, сумма = {sum}");
+
+            stopwatch.Reset();
+
+            Assert.True(sum > 0);
+        }
     }
 }
